@@ -1,4 +1,4 @@
-* WVUP Blackboard Scraper
+# WVUP Blackboard Scraper
 
 This repository contains a script that will login to WVUP's Blackboard instance,
 scrape the due dates segment for upcoming assignments, and output these
