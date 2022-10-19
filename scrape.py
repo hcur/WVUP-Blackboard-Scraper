@@ -1,5 +1,8 @@
+# TODO: package with nix
+
 import calendar
 import datetime
+import getpass
 import sys
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -8,11 +11,9 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.keys import Keys
 from time import sleep
 
-user = ""
-password = ""
 driver = webdriver.Firefox()
 
-def login():
+def login(user, password):
     """
     Login to blackboard.
     """
@@ -90,11 +91,33 @@ def create_org_todo_entries(a, c, d):
 
         # create corresponding schedule entry
         scheduled = "SCHEDULED: <"
-        due_date = due_date.split(":" )[1]
-        due_date = due_date.split(", ")[0].strip()
-        
-        scheduled += due_date
 
+        due_date = due_date.split(":")[1]
+        due_date = due_date.split(",")[0]
+        due_date = due_date.lstrip()
+
+        # define things ahead of time
+        day, m = "", ""
+
+        # handle date values with 0- prefixes (i.e, 01, 02, etc)
+        if "/" in due_date[3:5]:
+            day = "0" + due_date[3]
+        else:
+            day = due_date[3:5]
+        if "/" in due_date[0:2]:
+            m = "0" + due_date[0]
+        else:
+            m = due_date[0:2]
+        if len(due_date[6:8]) == 2:
+            y = due_date[6:8]
+        else:
+            y = due_date[5:8]
+
+        # create year value
+        y = "20" + y
+        scheduled += y + "-" + m + "-" + day
+
+        # finalize scheduled value
         day = calendar.day_name[datetime.datetime.strptime(due_date, '%m/%d/%y').weekday()]
         scheduled += " " + day[0:3] + ">"
 
@@ -189,15 +212,18 @@ def print_to_terminal(results):
 def main():
     # ugly argument parsing, maybe rewrite in the future?
     args = sys.argv
-    if len(args) == 3:
-        # python3 main.py ~/s/org/agenda <username> <password>
-        path = args[0]
-        id = args[1]
-        password = args[2]
+
+    user = getpass.getuser(prompt="blackboard login id: ")
+    password = getpass.getpass(prompt="password: ")
+
+    if len(args) == 2:
+        # python3 scrape.py ~/s/org/agenda
+        path = args[1]
     else:
         print("Incorrect number of arguments. Exiting...")
+        return -1
 
-    login()
+    login(user, password)
     (a, c, d) = scrape()
     entries = create_org_todo_entries(a, c, d)
     # print_to_terminal(entries)

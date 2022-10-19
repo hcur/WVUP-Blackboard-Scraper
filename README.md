@@ -11,7 +11,7 @@ without some reworking of the `scrape()` function.
 
 This script requires *exactly* 3 arguments, as shown below:
 
-    python3 scrape.py <org file output path> <WVUP login id> <WVUP password>
+    python3 scrape.py <org file output path> 
 
 Note: omit the trailling "/" from the path you input. Example:
 
