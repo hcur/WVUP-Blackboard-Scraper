@@ -2,7 +2,8 @@
 
 import calendar
 import datetime
-import getpass
+#import getpass
+import os
 import sys
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -10,8 +11,6 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.keys import Keys
 from time import sleep
-
-driver = webdriver.Firefox()
 
 def login(user, password):
     """
@@ -150,15 +149,25 @@ def organize_org_files(folderpath, entries):
     courses, f = [], ""
     for x in entries:
         course = get_course_from_entry(x[0])
-        filename = folderpath + "/" + course + ".org"
+        filename = folderpath + course + ".org"
+
+        write = True
+        if os.path.isfile(filename):
+            f = open(filename, 'r')
+            for line in f.readlines():
+                if line == x[0] or line == x[1]:
+                    write = False
+            f.close()
+
         if course not in courses:
             courses.append(course)
             f = open(filename, 'w')
         else:
             f = open(filename, 'a')
 
-        f.write(x[0] + "\n")
-        f.write(x[1] + "\n")
+        if write:
+            f.write(x[0] + "\n")
+            f.write(x[1] + "\n")
         f.close()
 
 def get_course_from_entry(entry):
@@ -210,19 +219,27 @@ def print_to_terminal(results):
         print("")
 
 def main():
-    # ugly argument parsing, maybe rewrite in the future?
     args = sys.argv
 
-    user = getpass.getuser(prompt="blackboard login id: ")
-    password = getpass.getpass(prompt="password: ")
+    #user = getpass.getuser(prompt="blackboard login id: ")
+    #password = getpass.getpass(prompt="password: ")
+    print("")
+    user = input("blackboard login id: ")
+    password = input("password: ")
 
-    if len(args) == 2:
-        # python3 scrape.py ~/s/org/agenda
-        path = args[1]
-    else:
-        print("Incorrect number of arguments. Exiting...")
+    path = args[1]
+    if len(args) > 2:
+        print("Extraneous arguments after " + args[1] + ". Ignoring...")
+
+    # validate path
+    if path[len(path)-1] != "/":
+        path = path + "/"
+    if not os.path.isdir(path):
+        pritnt("Given path does not exist. Exiting...")
         return -1
 
+    global driver
+    driver = webdriver.Firefox()
     login(user, password)
     (a, c, d) = scrape()
     entries = create_org_todo_entries(a, c, d)
