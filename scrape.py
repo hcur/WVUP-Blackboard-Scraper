@@ -152,22 +152,46 @@ def organize_org_files(folderpath, entries):
         filename = folderpath + course + ".org"
 
         write = True
+        iter = 0
+        # don't overwrite if folder already exists
         if os.path.isfile(filename):
             f = open(filename, 'r')
             for line in f.readlines():
+                # if line already in file, don't write
                 if line == x[0] or line == x[1]:
                     write = False
+
+                # handle done markings
+                if iter == 0:
+                    assn = get_assn_from_entry(x[0])
+                    lineassn = get_assn_from_entry(line)
+
+                    course = get_course_from_entry(x[0])
+                    linecourse = get_course_from_entry(line)
+
+                    if assn == lineassn:
+                        status = get_status_from_entry(x[1])
+                        if status == "DONE":
+                            # assignment has been completed and is
+                            # marked as such in the agenda
+                            write = False
+
+                # iterate through non-empty lines
+                # hackish, but org-agenda entries come in pairs
+                if len(line) > 1:
+                    iter = (iter + 1) % 2
+
             f.close()
 
-        if course not in courses:
-            courses.append(course)
-            f = open(filename, 'w')
+            if write:
+                f = open(filename, 'a')
         else:
-            f = open(filename, 'a')
+            f = open(filename, 'w')
 
         if write:
             f.write(x[0] + "\n")
             f.write(x[1] + "\n")
+
         f.close()
 
 def get_course_from_entry(entry):
@@ -175,6 +199,7 @@ def get_course_from_entry(entry):
     Parse the course from an already-formatted
     todo entry.
     """
+    entry = entry.strip()
     # todo assignment - (course) (coursenumber)
     entry = entry.split("- ")[1].strip()
     entry = entry.replace(" ", "-")
@@ -189,10 +214,34 @@ def get_date_from_entry(entry):
     organization scheme was finalized, and is being left
     here should it be handy in the future.
     """
+    entry = entry.strip()
     # ex: SCHEDULED: <1-1-22 Fri>
     entry = entry.split("<")[1]
     entry = entry.split(" ")[0]
     # should just be date digits now
+    return entry
+
+def get_assn_from_entry(entry):
+    """
+    Parse the assignment name from an already-formatted
+    SCHEDULED entry.
+    """
+    entry = entry.strip()
+    # "todo assignment - (course) (coursenumber)"
+    entry = entry.split(" ")[1].strip()
+    # "assignment - (course) (coursenumber)"
+    entry = entry.split(" ")[0].strip()
+    # "assignment"
+    return entry
+
+def get_status_from_entry(entry):
+    """
+    Parse the completion status from an already-formatted
+    SCHEDULED entry.
+    """
+    # "done assignment - (course) (coursenumber)"
+    entry = entry.strip()
+    entry = entry.split(" ")[0].strip() # possible extraneous strip() call?
     return entry
 
 def get_all_due_dates(soup):
@@ -219,17 +268,53 @@ def print_to_terminal(results):
         print("")
 
 def main():
+    # scrape.py <path> <user> <password>
+
     args = sys.argv
 
-    #user = getpass.getuser(prompt="blackboard login id: ")
-    #password = getpass.getpass(prompt="password: ")
-    print("")
-    user = input("blackboard login id: ")
-    password = input("password: ")
-
-    path = args[1]
-    if len(args) > 2:
-        print("Extraneous arguments after " + args[1] + ". Ignoring...")
+    # validate arguments
+    if len(args) == 1:
+        #user = getpass.getuser(prompt="blackboard login id: ")
+        #password = getpass.getpass(prompt="password: ")
+        print("")
+        user = input("blackboard login id: ")
+        password = input("password: ")
+    elif len(args) < 2:
+        print("No path given. Continue in current directory? (y/n) ")
+        i = input(" > ")
+        if i.strip().lower() == "y":
+            path = os.getcwd()
+        else:
+            print("Exiting...")
+            return 0
+        #user = getpass.getuser(prompt="blackboard login id: ")
+        #password = getpass.getpass(prompt="password: ")
+        print("")
+        user = input("blackboard login id: ")
+        password = input("password: ")
+    elif len(args) == 2:
+        path = args[1]
+        #user = getpass.getuser(prompt="blackboard login id: ")
+        #password = getpass.getpass(prompt="password: ")
+        print("")
+        user = input("blackboard login id: ")
+        password = input("password: ")
+    elif len(args) < 4:
+        print("Invalid number of arguments.")
+        print("Ignoring: ", args[2])
+        #user = getpass.getuser(prompt="blackboard login id: ")
+        #password = getpass.getpass(prompt="password: ")
+        print("")
+        user = input("blackboard login id: ")
+        password = input("password: ")
+    else:
+        # so as to allow entering username and password through
+        # a script
+        path = args[1]
+        user = args[2]
+        password = args[3]
+        if len(args) > 4:
+            print("Extraneous arguments after " + args[1] + ". Ignoring...")
 
     # validate path
     if path[len(path)-1] != "/":
