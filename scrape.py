@@ -86,7 +86,7 @@ def create_org_todo_entries(a, c, d):
         # create todo entry
         course = course.split(":")[1]
         course = course.split("-")
-        todo = "* TODO " + assn + " - " + course[0] + " " + course[1]
+        todo = "* TODO " + assn + " -" + course[0] + " " + course[1]
 
         # create corresponding schedule entry
         scheduled = "SCHEDULED: <"
@@ -146,19 +146,24 @@ def organize_org_files(folderpath, entries):
     # create the folder, if needbe
     Path(folderpath).mkdir(parents=True, exist_ok=True)
 
-    courses, f = [], ""
+    courses, write = [], True
     for x in entries:
-        course = get_course_from_entry(x[0])
+        f = ""
         filename = folderpath + course + ".org"
 
-        write = True
+        if write is not False:
+            pass
+        elif iter == 0:
+            write = True
         iter = 0
         # don't overwrite if folder already exists
         if os.path.isfile(filename):
             f = open(filename, 'r')
             for line in f.readlines():
+                line = line.strip('\n')
+
                 # if line already in file, don't write
-                if line == x[0] or line == x[1]:
+                if line == x[0]:
                     write = False
 
                 # handle done markings
@@ -166,21 +171,19 @@ def organize_org_files(folderpath, entries):
                     assn = get_assn_from_entry(x[0])
                     lineassn = get_assn_from_entry(line)
 
-                    course = get_course_from_entry(x[0])
-                    linecourse = get_course_from_entry(line)
-
                     if assn == lineassn:
-                        status = get_status_from_entry(x[1])
+                        status = get_status_from_entry(x[0])
                         if status == "DONE":
                             # assignment has been completed and is
                             # marked as such in the agenda
                             write = False
 
-                # iterate through non-empty lines
+                # iterate through odd-numbered non-empty lines
                 # hackish, but org-agenda entries come in pairs
                 if len(line) > 1:
                     iter = (iter + 1) % 2
 
+            # close for now---will be reopened if writing
             f.close()
 
             if write:
@@ -188,11 +191,14 @@ def organize_org_files(folderpath, entries):
         else:
             f = open(filename, 'w')
 
+        # write if necessary
         if write:
             f.write(x[0] + "\n")
             f.write(x[1] + "\n")
 
-        f.close()
+        # close if there's an open file handler
+        if f != "":
+            f.close()
 
 def get_course_from_entry(entry):
     """
@@ -201,7 +207,7 @@ def get_course_from_entry(entry):
     """
     entry = entry.strip()
     # todo assignment - (course) (coursenumber)
-    entry = entry.split("- ")[1].strip()
+    entry = entry.split("- ")[1]
     entry = entry.replace(" ", "-")
     return entry
 
@@ -227,10 +233,17 @@ def get_assn_from_entry(entry):
     SCHEDULED entry.
     """
     entry = entry.strip()
-    # "todo assignment - (course) (coursenumber)"
-    entry = entry.split(" ")[1].strip()
+    # " * todo assignment - (course) (coursenumber)"
+    try:
+        entry = entry.split("TODO ")[1]
+    except IndexError:
+        try:
+            entry = entry.split("DONE ")[1]
+        except IndexError:
+            return -1
+
     # "assignment - (course) (coursenumber)"
-    entry = entry.split(" ")[0].strip()
+    entry = entry.split("-")[0].strip()
     # "assignment"
     return entry
 
@@ -239,9 +252,9 @@ def get_status_from_entry(entry):
     Parse the completion status from an already-formatted
     SCHEDULED entry.
     """
-    # "done assignment - (course) (coursenumber)"
-    entry = entry.strip()
-    entry = entry.split(" ")[0].strip() # possible extraneous strip() call?
+    # " * done assignment - (course) (coursenumber)"
+    entry = entry.split("*")[1].strip()
+    entry = entry.split(" ")[0]
     return entry
 
 def get_all_due_dates(soup):
@@ -271,15 +284,10 @@ def main():
     # scrape.py <path> <user> <password>
 
     args = sys.argv
+    path, user, password = "", "", ""
 
     # validate arguments
-    if len(args) == 1:
-        #user = getpass.getuser(prompt="blackboard login id: ")
-        #password = getpass.getpass(prompt="password: ")
-        print("")
-        user = input("blackboard login id: ")
-        password = input("password: ")
-    elif len(args) < 2:
+    if len(args) < 2:
         print("No path given. Continue in current directory? (y/n) ")
         i = input(" > ")
         if i.strip().lower() == "y":
