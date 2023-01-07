@@ -94,23 +94,33 @@ def create_org_todo_entries(a, c, d):
         due_date = due_date.split(":")[1]
         due_date = due_date.split(",")[0]
         due_date = due_date.lstrip()
+        print(due_date)
 
         # define things ahead of time
         day, m = "", ""
 
         # handle date values with 0- prefixes (i.e, 01, 02, etc)
-        if "/" in due_date[3:5]:
+
+        if len(due_date) == 7 and "/" in due_date[2:3]:
             day = "0" + due_date[3]
+        elif len(due_date) == 7:
+            day = due_date[2:4]
+        elif len(due_date) == 6 and "/" in due_date[1:2]:
+            day = "0" + due_date[2]
         else:
             day = due_date[3:5]
+
         if "/" in due_date[0:2]:
             m = "0" + due_date[0]
         else:
             m = due_date[0:2]
-        if len(due_date[6:8]) == 2:
+
+        if len(due_date) == 6:
+            y = due_date[4:6]
+        elif len(due_date) == 7:
+            y = due_date[5:7]
+        elif len(due_date) == 8:
             y = due_date[6:8]
-        else:
-            y = due_date[5:8]
 
         # create year value
         y = "20" + y
@@ -149,6 +159,7 @@ def organize_org_files(folderpath, entries):
     courses, write = [], True
     for x in entries:
         f = ""
+        course = get_course_from_entry(x[0])
         filename = folderpath + course + ".org"
 
         if write is not False:
